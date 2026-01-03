@@ -1,0 +1,267 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-local
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: app_db
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
+      TZ: Asia/Jakarta
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    depends_on:
+      - mysql
+
+  # localtunnel:
+  #   image: node:20
+  #   container_name: laravel_localtunnel
+  #   command: npx localtunnel --port 8000
+  #   restart: unless-stopped
+# postgres:
+  #   image: postgres:14.1-alpine
+  #   restart: always
+  #   container_name: postgres
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: postgres
+  #   volumes:
+  #   - ./docker_volumes/postgres/data:/var/lib/postgresql/data #local_machine:internal_docker
+  #   ports:
+  #   - 5432:5432 #local_machine_port:internal_docker_container_port
+  
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.2
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - ./docker_volumes/zookeeper/data:/var/lib/zookeeper/data
+      - ./docker_volumes/zookeeper/log:/var/lib/zookeeper/log
+  
+  kafka:
+    image: confluentinc/cp-kafka:7.3.2
+    container_name: kafka
+    ports:
+      # To learn about configuring Kafka for access across networks see
+      # https://www.confluent.io/blog/kafka-client-cannot-connect-to-broker-on-aws-on-docker-etc/
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    volumes:
+      - ./docker_volumes/kafka:/var/lib/kafka/data
+    
+  kafka-ui:
+    image: provectuslabs/kafka-ui:53a6553765a806eda9905c43bfcfe09da6812035
+    restart: always
+    ports:
+      - 9080:8080
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_1_NAME: dev
+      KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS: kafka01-bootstrap.dev.amartha.id:9094
+      KAFKA_CLUSTERS_2_NAME: uat
+      KAFKA_CLUSTERS_2_BOOTSTRAPSERVERS: kafka01-bootstrap.uat.amartha.id:9094
+  
+  redis:
+    image: redis:7.2.3-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    expose:
+      - '6379'
+    volumes: 
+      - ./docker_volumes/data/redis:/data
+  
+  # mongodb:
+  #   image: mongo:5.0.3
+  #   restart: always
+  #   container_name: mongodb
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: root
+  #     MONGO_INITDB_ROOT_PASSWORD: mongo
+  #     MONGO_INITDB_DATABASE: admin
+  #   volumes:
+  #   - ./docker_volumes/mongo/data:/data/db
+  #   ports:
+  #   - 27017:27017
+
+  # username/password : guest/guest
+  # rabbitmq:
+  #   image: rabbitmq:3.10.5-management
+  #   restart: always
+  #   container_name: rabbitmq
+  #   ports:
+  #   - 5672:5672
+  #   - 15672:15672
+  #   volumes:
+  #       - ./docker_volumes/rabbitmq/data/:/var/lib/rabbitmq/
+  #       - ./docker_volumes/rabbitmq/log/:/var/log/rabbitmq
+
+
+volumes:
+  mysql_data:
+
+
+
+
+
+# services:
+#   # Redis Cluster Nodes
+#   redis-7000:
+#     image: redis:7.2
+#     container_name: redis-7000
+#     ports:
+#       - "17000:7000"
+#       - "27000:17000"
+#     command: >
+#       redis-server
+#       --port 7000
+#       --cluster-enabled yes
+#       --cluster-config-file nodes.conf
+#       --cluster-node-timeout 5000
+#       --appendonly yes
+#     networks:
+#       redis-cluster-net:
+#         aliases:
+#           - redis-7000
+
+#   redis-7001:
+#     image: redis:7.2
+#     container_name: redis-7001
+#     ports:
+#       - "17001:7001"
+#       - "27001:17001"
+#     command: >
+#       redis-server
+#       --port 7001
+#       --cluster-enabled yes
+#       --cluster-config-file nodes.conf
+#       --cluster-node-timeout 5000
+#       --appendonly yes
+#     networks:
+#       redis-cluster-net:
+#         aliases:
+#           - redis-7001
+
+#   redis-7002:
+#     image: redis:7.2
+#     container_name: redis-7002
+#     ports:
+#       - "17002:7002"
+#       - "27002:17002"
+#     command: >
+#       redis-server
+#       --port 7002
+#       --cluster-enabled yes
+#       --cluster-config-file nodes.conf
+#       --cluster-node-timeout 5000
+#       --appendonly yes
+#     networks:
+#       redis-cluster-net:
+#         aliases:
+#           - redis-7002
+
+#   redis-7003:
+#     image: redis:7.2
+#     container_name: redis-7003
+#     ports:
+#       - "17003:7003"
+#       - "27003:17003"
+#     command: >
+#       redis-server
+#       --port 7003
+#       --cluster-enabled yes
+#       --cluster-config-file nodes.conf
+#       --cluster-node-timeout 5000
+#       --appendonly yes
+#     networks:
+#       redis-cluster-net:
+#         aliases:
+#           - redis-7003
+
+#   redis-7004:
+#     image: redis:7.2
+#     container_name: redis-7004
+#     ports:
+#       - "17004:7004"
+#       - "27004:17004"
+#     command: >
+#       redis-server
+#       --port 7004
+#       --cluster-enabled yes
+#       --cluster-config-file nodes.conf
+#       --cluster-node-timeout 5000
+#       --appendonly yes
+#     networks:
+#       redis-cluster-net:
+#         aliases:
+#           - redis-7004
+
+#   redis-7005:
+#     image: redis:7.2
+#     container_name: redis-7005
+#     ports:
+#       - "17005:7005"
+#       - "27005:17005"
+#     command: >
+#       redis-server
+#       --port 7005
+#       --cluster-enabled yes
+#       --cluster-config-file nodes.conf
+#       --cluster-node-timeout 5000
+#       --appendonly yes
+#     networks:
+#       redis-cluster-net:
+#         aliases:
+#           - redis-7005
+
+#   # Go App
+#   go-app:
+#     build: .
+#     container_name: go-app
+#     depends_on:
+#       - redis-7000
+#       - redis-7001
+#       - redis-7002
+#       - redis-7003
+#       - redis-7004
+#       - redis-7005
+#     networks:
+#       - redis-cluster-net
+#     environment:
+#       - REDIS_ADDRS=redis-7000:7000,redis-7001:7001,redis-7002:7002,redis-7003:7003,redis-7004:7004,redis-7005:7005
+#     command: ["go", "run", "main.go"]
+
+
+# networks:
+#   redis-cluster-net:
+#     driver: bridge
