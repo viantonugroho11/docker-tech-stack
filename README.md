@@ -1,72 +1,78 @@
 ## Docker Tech Stack (Local Dev)
 
-Kumpulan layanan Docker Compose untuk kebutuhan pengembangan lokal: database, cache, message broker, dan tool pendukung (UI/monitoring). Beberapa layanan tambahan disertakan sebagai komentar sehingga bisa diaktifkan sesuai kebutuhan.
+A curated Docker Compose stack for local development: databases, cache, message broker, and supporting tools (UI/monitoring). Several optional services are included as commented blocks so you can enable them as needed.
 
-### Komponen Aktif
-- **MySQL 8.0**: port `3306`, kredensial default untuk pengembangan
+### Active Components
+- **MySQL 8.0**: port `3306`, development credentials
   - ROOT: `root` / `rootpassword`
   - DB: `app_db`, USER: `app_user`, PASS: `app_password`
-- **phpMyAdmin**: UI MySQL di `http://localhost:8080`
-- **Zookeeper**: port internal `2181` (dibutuhkan Kafka)
+- **phpMyAdmin**: MySQL UI at `http://localhost:8080`
+- **Zookeeper**: internal port `2181` (required by Kafka)
 - **Kafka (Confluent 7.3.2)**:
-  - Listener eksternal: `localhost:9092`
-  - Listener internal antar-kontainer: `kafka:29092`
-- **Kafka UI**: `http://localhost:9080` (cluster `local` terhubung ke `kafka:29092`)
+  - External listener: `localhost:9092`
+  - Internal inter-container listener: `kafka:29092`
+- **Kafka UI**: `http://localhost:9080` (the `local` cluster points to `kafka:29092`)
 - **Redis 7**: port `6379`
 
-### Komponen Opsional (dikomentari di compose)
-- **PostgreSQL**, **MongoDB**, **RabbitMQ**, **Redis Cluster (6 node)**, **LocalTunnel**, **Go App**. Aktifkan dengan menghapus komentar pada blok layanan terkait bila diperlukan.
+### Optional Components (commented in compose)
+- **PostgreSQL**, **MongoDB**, **RabbitMQ**, **Redis Cluster (6 nodes)**, **LocalTunnel**, **Go App**. Enable by uncommenting the respective service blocks when needed.
 
 ---
 
-### Prasyarat
-- Docker Desktop / Docker Engine + Docker Compose v2
-- Make (opsional, untuk menjalankan target di `makefile`)
+### Prerequisites
+- Docker Desktop / Docker Engine + Docker Compose (v2 recommended; v1 works with `docker-compose`)
+- Make (optional, to use `make` targets)
 
-### Cara Cepat Menjalankan
-1) Jalankan seluruh layanan:
+### Quick Start
+1) Start all services:
 
 ```bash
+# Docker Compose v2
 docker compose up -d
-# atau
+# or Docker Compose v1
+docker-compose up -d
+# or via Make
 make up
 ```
 
-2) Akses cepat layanan:
+2) Service endpoints:
 - **MySQL**: `localhost:3306`
 - **phpMyAdmin**: `http://localhost:8080` (host: `mysql`, user: `app_user`, pass: `app_password`)
-- **Kafka** (client lokal): `localhost:9092`
+- **Kafka** (from host): `localhost:9092`
 - **Kafka UI**: `http://localhost:9080`
 - **Redis**: `localhost:6379`
 
-3) Hentikan layanan:
+3) Stop services:
 
 ```bash
+# Docker Compose v2
 docker compose down
-# atau
+# or Docker Compose v1
+docker-compose down
+# or via Make
 make down
 ```
 
-4) Reset total (hapus kontainer + data):
+4) Full reset (remove containers + data):
 
 ```bash
-docker compose down -v
+docker compose down -v || docker-compose down -v
 rm -rf ./docker_volumes
 ```
 
-Catatan: Docker akan membuat folder bind mount jika belum ada. Anda juga dapat menyiapkan struktur folder secara manual (lihat bagian Volumes).
+Note: Docker will create bind mount folders if they don’t exist. You can also prepare the folder structure manually (see Volumes).
 
 ---
 
-### Volumes & Persistensi Data
+### Volumes & Data Persistence
 - Named volume:
-  - `mysql_data` → data MySQL persisten di Docker volume
-- Bind mounts (di dalam repo):
+  - `mysql_data` → persistent MySQL data in a Docker-managed volume
+- Bind mounts (inside the repo):
   - Zookeeper: `./docker_volumes/zookeeper/data`, `./docker_volumes/zookeeper/log`
   - Kafka: `./docker_volumes/kafka`
   - Redis: `./docker_volumes/data/redis`
 
-Struktur minimal yang disarankan (jika ingin menyiapkan manual):
+Recommended minimal structure (if creating manually):
 
 ```bash
 mkdir -p ./docker_volumes/zookeeper/data \
@@ -75,47 +81,47 @@ mkdir -p ./docker_volumes/zookeeper/data \
          ./docker_volumes/data/redis
 ```
 
-Perhatian: target `init_docker_volumes` pada `makefile` membuat beberapa direktori contoh, namun struktur Redis pada `docker-compose.yml` menggunakan `./docker_volumes/data/redis`. Sesuaikan bila Anda memilih menggunakan `make init_docker_volumes`.
+Heads-up: the `init_docker_volumes` target in the `makefile` creates sample directories, but Redis in `docker-compose.yml` uses `./docker_volumes/data/redis`. Adjust accordingly if you choose to run `make init_docker_volumes`.
 
 ---
 
-### Perintah Makefile
-- `make up`: menjalankan semua layanan (`docker compose up -d`)
-- `make down`: mematikan semua layanan (`docker compose down`)
-- `make init_docker_volumes`: membuat struktur direktori contoh untuk beberapa layanan
+### Makefile Targets
+- `make up`: start all services (`docker compose up -d`)
+- `make down`: stop all services (`docker compose down`)
+- `make init_docker_volumes`: create sample directories for several services
 
 ---
 
-### Konfigurasi Penting
+### Key Configuration
 - **MySQL**:
   - Env: `MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `TZ=Asia/Jakarta`
 - **Kafka**:
-  - `KAFKA_ADVERTISED_LISTENERS`: `PLAINTEXT://localhost:9092` (untuk klien di host) dan `PLAINTEXT_INTERNAL://kafka:29092` (untuk antar-kontainer)
-  - `KAFKA_LISTENER_SECURITY_PROTOCOL_MAP`: kedua listener menggunakan `PLAINTEXT`
+  - `KAFKA_ADVERTISED_LISTENERS`: `PLAINTEXT://localhost:9092` (for host clients) and `PLAINTEXT_INTERNAL://kafka:29092` (for inter-container)
+  - `KAFKA_LISTENER_SECURITY_PROTOCOL_MAP`: both listeners use `PLAINTEXT`
 - **Kafka UI**:
-  - Sudah disiapkan cluster `local` (bootstrap: `kafka:29092`)
-  - Ada contoh entri untuk `dev` dan `uat` (alamat eksternal). Hapus jika tidak diperlukan.
+  - Preconfigured `local` cluster (bootstrap: `kafka:29092`)
+  - Example entries for `dev` and `uat` (external addresses). Remove if not needed.
 
 ---
 
 ### Troubleshooting
-- **Port sudah digunakan**: ubah port host di `docker-compose.yml` atau hentikan proses yang bentrok.
-- **Kafka client tidak bisa connect**:
-  - Gunakan `bootstrap.servers=localhost:9092` dari host.
-  - Dari dalam kontainer lain di network yang sama, gunakan `kafka:29092`.
-  - Periksa firewall/VPN yang memblok koneksi.
-- **Kafka UI tidak menampilkan data**:
-  - Pastikan Kafka berjalan dan `KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS` mengarah ke `kafka:29092`.
-  - Hapus entri `dev/uat` jika tidak relevan untuk lingkungan lokal.
-- **Reset data**: `docker compose down -v` lalu hapus folder `./docker_volumes` jika perlu.
+- **Port already in use**: change host ports in `docker-compose.yml` or stop the conflicting process.
+- **Kafka client cannot connect**:
+  - From host use `bootstrap.servers=localhost:9092`.
+  - From another container on the same network use `kafka:29092`.
+  - Check firewall/VPN that may block connections.
+- **Kafka UI shows no data**:
+  - Ensure Kafka is running and `KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS` points to `kafka:29092`.
+  - Remove `dev/uat` entries if not relevant locally.
+- **Reset data**: `docker compose down -v` then delete `./docker_volumes` if necessary.
 
 ---
 
-### Keamanan
-Semua kredensial di sini hanya untuk pengembangan lokal. Jangan gunakan konfigurasi ini untuk produksi tanpa peninjauan keamanan.
+### Security
+All credentials here are for local development only. Do not use this configuration for production without a security review.
 
 ---
 
-### Lisensi
-Tidak ditentukan. Tambahkan berkas lisensi bila diperlukan.
+### License
+Not specified. Add a license file if needed.
 
